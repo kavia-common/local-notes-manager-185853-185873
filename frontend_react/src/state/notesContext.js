@@ -19,7 +19,7 @@ export function NotesProvider({ children, initialState = initialNotesState }) {
   const [state, dispatch] = useReducer(notesReducer, initialState);
 
   useEffect(() => {
-    // Notify app about state updates for persistence
+    // Notify app about state updates for persistence (App handles debounced write)
     if (typeof window.__persistNotesState === "function") {
       window.__persistNotesState(state);
     } else {

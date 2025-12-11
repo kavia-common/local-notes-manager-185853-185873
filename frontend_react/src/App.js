@@ -10,7 +10,7 @@ import Toast from "./components/Toast";
 import { NotesProvider } from "./state/notesContext";
 import { SettingsProvider } from "./state/settingsContext";
 import { useLocalStorage } from "./hooks/useLocalStorage";
-import { STORAGE_KEY, migrateIfNeeded } from "./utils/storage";
+import { STORAGE_KEY, migrateIfNeeded, createDebouncedStorageWriter, subscribeToErrors } from "./utils/storage";
 import { initialNotesState } from "./state/notesReducer";
 import { initialSettingsState } from "./state/settingsReducer";
 
@@ -37,29 +37,35 @@ function App() {
     document.documentElement.setAttribute("data-theme", theme);
   }, [data?.settings?.theme]);
 
-  // We'll provide initial states to providers; reducers will mutate in-memory.
-  // To persist, we listen to window 'notes:state' and 'settings:state' events
-  // fired by small bridge dispatchers inside providers via a window event.
-  // For simplicity and given current constraints, we patch window.dispatchState
-  // from App and inject via context effects below.
   const [toast, setToast] = useState({ message: "", type: "info" });
   const [confirm, setConfirm] = useState({ open: false, note: null });
 
-  // Bridge updates from providers to localStorage
+  // Subscribe to non-fatal errors and show toast
+  useEffect(() => {
+    const unsub = subscribeToErrors(({ message }) => {
+      setToast({ message, type: "error" });
+    });
+    return () => unsub();
+  }, []);
+
+  // Debounced writer for persistence bridge
+  const debouncedWrite = useMemo(() => createDebouncedStorageWriter(STORAGE_KEY, 250), []);
+
+  // Bridge updates from providers to localStorage (debounced)
   useEffect(() => {
     function handleNotesState(e) {
       try {
         const next = { ...data, notes: e.detail.notes };
-        setRawData(next);
-      } catch {
+        debouncedWrite(next);
+      } catch (err) {
         // ignore
       }
     }
     function handleSettingsState(e) {
       try {
         const next = { ...data, settings: e.detail };
-        setRawData(next);
-      } catch {
+        debouncedWrite(next);
+      } catch (err) {
         // ignore
       }
     }
@@ -69,32 +75,37 @@ function App() {
       window.removeEventListener("notes:state", handleNotesState);
       window.removeEventListener("settings:state", handleSettingsState);
     };
-  }, [data, setRawData]);
+  }, [data, debouncedWrite]);
 
-  // Provide event dispatchers to children by defining globals they can call via useEffect in contexts
+  // Provide global functions that contexts can call directly (debounced)
   useEffect(() => {
     window.__persistNotesState = (notesState) => {
       const next = { ...data, notes: notesState.notes };
-      setRawData(next);
+      debouncedWrite(next);
     };
     window.__persistSettingsState = (settingsState) => {
       const next = { ...data, settings: settingsState };
-      setRawData(next);
+      debouncedWrite(next);
     };
-  }, [data, setRawData]);
+  }, [data, debouncedWrite]);
 
-  // Delete handling via confirm dialog; actual deletion occurs in NoteCard via passed handler in NotesList
   const handleConfirmDelete = (note) => {
     setConfirm({ open: true, note });
   };
 
-  // Consumers (NoteCard) will use onConfirmDelete -> open dialog, but actual delete is dispatched from within NotesList consumer via an event
   useEffect(() => {
     function handleNoteDeleted(e) {
       setToast({ message: `Deleted "${e.detail.title || "note"}"`, type: "success" });
     }
+    function handleToastInfo(e) {
+      if (e?.detail?.message) setToast({ message: e.detail.message, type: "info" });
+    }
     window.addEventListener("note:deleted", handleNoteDeleted);
-    return () => window.removeEventListener("note:deleted", handleNoteDeleted);
+    window.addEventListener("toast:info", handleToastInfo);
+    return () => {
+      window.removeEventListener("note:deleted", handleNoteDeleted);
+      window.removeEventListener("toast:info", handleToastInfo);
+    };
   }, []);
 
   return (
@@ -120,7 +131,6 @@ function App() {
             message={`Are you sure you want to delete "${confirm.note?.title || "this note"}"? This cannot be undone.`}
             onCancel={() => setConfirm({ open: false, note: null })}
             onConfirm={() => {
-              // Emit an event that NotesList (or NoteCard) can listen to, but we keep it simple:
               const ev = new CustomEvent("note:confirm-delete", { detail: confirm.note });
               window.dispatchEvent(ev);
               setConfirm({ open: false, note: null });
@@ -149,7 +159,7 @@ function StatePersistenceWires() {
   const { state: notesState, deleteNote } = require("./hooks/useNotes"); // dynamic require to avoid circular import issues
   const { state: settingsState } = require("./hooks/useSettings");
 
-  // Persist on each state change
+  // Persist on each state change (delegated to App's debounced writers)
   useEffect(() => {
     if (typeof window.__persistNotesState === "function") {
       window.__persistNotesState(notesState);

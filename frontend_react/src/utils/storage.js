@@ -6,6 +6,20 @@
 export const STORAGE_KEY = "notes.app.v1";
 
 /**
+ * Small in-app error bus to surface non-fatal storage/migration errors.
+ * Consumers can subscribe to "error" events.
+ */
+const ERROR_EVENT = "app:error";
+function emitError(message, detail) {
+  try {
+    const ev = new CustomEvent(ERROR_EVENT, { detail: { message, detail, ts: Date.now() } });
+    window.dispatchEvent(ev);
+  } catch (_) {
+    // no-op
+  }
+}
+
+/**
  * PUBLIC_INTERFACE
  * Check if localStorage is available and functional.
  * Uses a try/catch to avoid throwing in restricted environments (SSR, privacy mode).
@@ -20,7 +34,19 @@ export function isStorageAvailable() {
     return true;
   } catch (err) {
     console.warn("[storage] localStorage unavailable:", err);
+    emitError("Local storage is not available. Your changes may not persist.", err?.message || err);
     return false;
+  }
+}
+
+/**
+ * Safe JSON parse producing undefined on error.
+ */
+function safeParseJSON(raw) {
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    return undefined;
   }
 }
 
@@ -36,14 +62,16 @@ export function getItemSafe(key, defaultValue = null) {
     if (!isStorageAvailable()) return defaultValue;
     const raw = window.localStorage.getItem(key);
     if (raw == null) return defaultValue;
-    try {
-      return JSON.parse(raw);
-    } catch (parseErr) {
-      console.warn("[storage] Failed to parse JSON for key:", key, parseErr);
+    const parsed = safeParseJSON(raw);
+    if (parsed === undefined) {
+      console.warn("[storage] Failed to parse JSON for key:", key);
+      emitError("Saved data is corrupted and could not be parsed. Using defaults.", { key });
       return defaultValue;
     }
+    return parsed;
   } catch (err) {
     console.warn("[storage] getItemSafe error:", err);
+    emitError("Could not read from local storage.", err?.message || err);
     return defaultValue;
   }
 }
@@ -63,6 +91,7 @@ export function setItemSafe(key, value) {
     return true;
   } catch (err) {
     console.warn("[storage] setItemSafe error:", err);
+    emitError("Could not save to local storage. Your latest changes may be lost.", err?.message || err);
     return false;
   }
 }
@@ -84,11 +113,14 @@ export function backupAndReset(key, badValue) {
       window.localStorage.setItem(backupKey, typeof badValue === "string" ? badValue : JSON.stringify(badValue));
     } catch (backupErr) {
       console.warn("[storage] Failed to write backup:", backupErr);
+      emitError("Could not create a backup copy of your corrupted data.", backupErr?.message || backupErr);
     }
     window.localStorage.removeItem(key);
+    emitError("Your saved data was reset due to corruption. A backup copy was created.", { key, backupKey });
     return true;
   } catch (err) {
     console.warn("[storage] backupAndReset error:", err);
+    emitError("Could not reset local storage.", err?.message || err);
     return false;
   }
 }
@@ -113,28 +145,56 @@ export function migrateIfNeeded(payload) {
       settings: typeof payload.settings === "object" && payload.settings !== null ? payload.settings : {},
     };
 
-    // No migrations are needed for version 1, but structure is here for future versions.
     if (working.version < currentVersion) {
-      // Example migration flow (commented for now since currentVersion === 1)
-      // while (working.version < currentVersion) {
-      //   switch (working.version) {
-      //     case 1:
-      //       // migrate to 2...
-      //       working.version = 2;
-      //       break;
-      //     default:
-      //       console.warn("[storage] Unknown migration path for version", working.version);
-      //       working.version = currentVersion; // best-effort
-      //   }
-      // }
+      // Placeholder for future migrations
     } else if (working.version > currentVersion) {
-      // Forward version found; leave as-is but log for visibility.
       console.warn("[storage] Data version is newer than app version:", working.version, ">", currentVersion);
+      emitError("Your saved data is from a newer app version. Some features may not work as expected.", {
+        dataVersion: working.version,
+        appVersion: currentVersion,
+      });
     }
 
     return working;
   } catch (err) {
     console.warn("[storage] migrateIfNeeded error:", err);
+    emitError("Failed to load saved data. Using defaults.", err?.message || err);
     return { version: 1, notes: [], settings: {} };
   }
+}
+
+/**
+ * Simple debounce helper.
+ */
+function debounce(fn, delay = 300) {
+  let t = null;
+  return (...args) => {
+    if (t) clearTimeout(t);
+    t = setTimeout(() => fn(...args), delay);
+  };
+}
+
+/**
+ * PUBLIC_INTERFACE
+ * Debounced writer factory for a given storage key.
+ * Returns a write function that persists with debounce and emits errors safely.
+ */
+export function createDebouncedStorageWriter(key, delay = 350) {
+  const write = (value) => setItemSafe(key, value);
+  const debounced = debounce(write, delay);
+  return debounced;
+}
+
+/**
+ * PUBLIC_INTERFACE
+ * Subscribe to internal error notifications.
+ * @param {(payload:{message:string, detail:any, ts:number})=>void} handler
+ * @returns {() => void} unsubscribe
+ */
+export function subscribeToErrors(handler) {
+  function onError(ev) {
+    handler(ev.detail);
+  }
+  window.addEventListener(ERROR_EVENT, onError);
+  return () => window.removeEventListener(ERROR_EVENT, onError);
 }

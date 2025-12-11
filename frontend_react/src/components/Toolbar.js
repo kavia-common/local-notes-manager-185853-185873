@@ -29,6 +29,10 @@ export default function Toolbar() {
 
   const handleReset = () => {
     resetFilters();
+    try {
+      const ev = new CustomEvent("toast:info", { detail: { message: "Filters reset" } });
+      window.dispatchEvent(ev);
+    } catch (_) {}
   };
 
   const handleSortBy = (e) => {
