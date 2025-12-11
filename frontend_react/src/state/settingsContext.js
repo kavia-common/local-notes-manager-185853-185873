@@ -27,6 +27,17 @@ export function SettingsProvider({ children, initialState = initialSettingsState
     }
   }, [state]);
 
+  // Listen for a generic reset-filters event to support NoResults clear action
+  useEffect(() => {
+    function onReset() {
+      try {
+        dispatch({ type: "RESET_FILTERS" });
+      } catch (_) {}
+    }
+    window.addEventListener("settings:reset-filters", onReset);
+    return () => window.removeEventListener("settings:reset-filters", onReset);
+  }, [dispatch]);
+
   return <SettingsContext.Provider value={{ state, dispatch }}>{children}</SettingsContext.Provider>;
 }
 

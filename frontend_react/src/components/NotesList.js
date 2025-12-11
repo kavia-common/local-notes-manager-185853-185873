@@ -2,6 +2,8 @@ import React, { useMemo } from "react";
 import NoteCard from "./NoteCard";
 import { useNotes } from "../hooks/useNotes";
 import { useSettings } from "../hooks/useSettings";
+import EmptyState from "./EmptyState";
+import NoResults from "./NoResults";
 
 /**
  * PUBLIC_INTERFACE
@@ -67,9 +69,35 @@ export default function NotesList({ onConfirmDelete }) {
   }, [notesState, settings]);
 
   if (filtered.length === 0) {
+    const query = (settings?.filter?.query || "").trim();
+    const pinnedOnly = !!settings?.filter?.pinnedOnly;
+    const archived = !!settings?.filter?.archived;
+    const hasAnyFilters = Boolean(query || pinnedOnly || archived || settings?.sortBy !== "updatedAt" || settings?.sortDir !== "desc");
+    if (!Array.isArray(notesState?.notes) || notesState.notes.length === 0) {
+      return (
+        <div className="container">
+          <EmptyState
+            title="Create your first note"
+            description="Start by adding a note using the form above."
+          />
+        </div>
+      );
+    }
     return (
-      <div className="container empty">
-        <p>No notes match your filters. Create one above!</p>
+      <div className="container">
+        <NoResults
+          message="No notes match your filters."
+          onClear={() => {
+            try {
+              const ev = new CustomEvent("toast:info", { detail: { message: "Filters reset" } });
+              window.dispatchEvent(ev);
+            } catch (_) {}
+            // Clear filters by dispatching an event to settings via DOM-less path:
+            // We rely on Toolbar's Reset handler via a custom event as global entry
+            const resetEvent = new CustomEvent("settings:reset-filters");
+            window.dispatchEvent(resetEvent);
+          }}
+        />
       </div>
     );
   }

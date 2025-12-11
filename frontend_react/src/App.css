@@ -350,3 +350,20 @@ body {
   text-align: center;
   color: var(--muted);
 }
+
+/* Error banner */
+.error-banner {
+  margin: 12px auto 0 auto;
+  max-width: 980px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: var(--text);
+  border-left: 4px solid var(--error);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  box-shadow: var(--shadow);
+}

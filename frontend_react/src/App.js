@@ -6,6 +6,7 @@ import NoteForm from "./components/NoteForm";
 import NotesList from "./components/NotesList";
 import ConfirmDialog from "./components/ConfirmDialog";
 import Toast from "./components/Toast";
+import ErrorBanner from "./components/ErrorBanner";
 
 import { NotesProvider } from "./state/notesContext";
 import { SettingsProvider } from "./state/settingsContext";
@@ -39,6 +40,7 @@ function App() {
 
   const [toast, setToast] = useState({ message: "", type: "info" });
   const [confirm, setConfirm] = useState({ open: false, note: null });
+  const [lastDeleted, setLastDeleted] = useState(null);
 
   // Subscribe to non-fatal errors and show toast
   useEffect(() => {
@@ -95,7 +97,9 @@ function App() {
 
   useEffect(() => {
     function handleNoteDeleted(e) {
-      setToast({ message: `Deleted "${e.detail.title || "note"}"`, type: "success" });
+      // store deleted note to allow undo
+      setLastDeleted(e.detail);
+      setToast({ message: `Deleted "${e.detail.title || "note"}" (Undo available)`, type: "success" });
     }
     function handleToastInfo(e) {
       if (e?.detail?.message) setToast({ message: e.detail.message, type: "info" });
@@ -114,6 +118,7 @@ function App() {
         <div className="app-root" role="application">
           <Header />
           <main role="main" aria-label="Notes main content">
+            <ErrorBanner />
             <NoteForm
               onSubmitSuccess={() => setToast({ message: "Note added", type: "success" })}
             />
@@ -147,6 +152,35 @@ function App() {
             type={toast.type}
             onClose={() => setToast({ message: "", type: "info" })}
           />
+          {lastDeleted ? (
+            <div className="toast" role="status" aria-live="polite" aria-atomic="true" style={{ left: 16, right: "auto" }}>
+              <span>Undo delete?</span>
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  try {
+                    const ev = new CustomEvent("note:undo-delete", { detail: lastDeleted });
+                    window.dispatchEvent(ev);
+                    // announce restore
+                    const msg = `Restored "${lastDeleted.title || "note"}"`;
+                    setToast({ message: msg, type: "success" });
+                  } catch (_) {}
+                  setLastDeleted(null);
+                }}
+                aria-label="Undo last delete"
+              >
+                Undo
+              </button>
+              <button
+                className="icon-btn"
+                onClick={() => setLastDeleted(null)}
+                aria-label="Dismiss undo"
+                title="Dismiss"
+              >
+                ✖️
+              </button>
+            </div>
+          ) : null}
         </div>
 
         <StatePersistenceWires />
@@ -161,7 +195,7 @@ function App() {
  */
 function StatePersistenceWires() {
   // hooks are used here to observe state changes; any change triggers persistence via window globals
-  const { state: notesState, deleteNote } = require("./hooks/useNotes"); // dynamic require to avoid circular import issues
+  const { state: notesState, deleteNote, dispatch } = require("./hooks/useNotes"); // dynamic require to avoid circular import issues
   const { state: settingsState } = require("./hooks/useSettings");
 
   // Persist on each state change (delegated to App's debounced writers)
@@ -193,9 +227,36 @@ function StatePersistenceWires() {
         window.dispatchEvent(ev);
       }
     }
+    function onUndoDelete(e) {
+      const note = e.detail;
+      if (!note || !note.id) return;
+      // Re-add the exact note data by dispatching ADD_NOTE with the original fields
+      try {
+        dispatch({
+          type: "ADD_NOTE",
+          payload: {
+            id: note.id,
+            title: note.title || "",
+            content: note.content || "",
+            tags: Array.isArray(note.tags) ? note.tags : [],
+            pinned: !!note.pinned,
+            archived: !!note.archived,
+            createdAt: note.createdAt,
+          },
+        });
+        const ev = new CustomEvent("toast:info", { detail: { message: `Restored "${note.title || "note"}"` } });
+        window.dispatchEvent(ev);
+      } catch (_) {
+        // swallow
+      }
+    }
     window.addEventListener("note:confirm-delete", onConfirmDelete);
-    return () => window.removeEventListener("note:confirm-delete", onConfirmDelete);
-  }, [deleteNote]);
+    window.addEventListener("note:undo-delete", onUndoDelete);
+    return () => {
+      window.removeEventListener("note:confirm-delete", onConfirmDelete);
+      window.removeEventListener("note:undo-delete", onUndoDelete);
+    };
+  }, [deleteNote, dispatch]);
 
   return null;
 }
