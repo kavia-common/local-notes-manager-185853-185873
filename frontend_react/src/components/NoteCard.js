@@ -23,8 +23,11 @@ export default function NoteCard({ note, onConfirmDelete }) {
   };
 
   return (
-    <article className={`note-card ${note.pinned ? "is-pinned" : ""} ${note.archived ? "is-archived" : ""}`}>
-      <div className="note-card-header">
+    <article
+      className={`note-card ${note.pinned ? "is-pinned" : ""} ${note.archived ? "is-archived" : ""}`}
+      aria-label={`Note ${note.title || "Untitled"}`}
+    >
+      <div className="note-card-header" role="group" aria-label="Note actions and title">
         {!isEditing ? (
           <h3 className="note-title">{note.title || "Untitled"}</h3>
         ) : (
@@ -35,29 +38,44 @@ export default function NoteCard({ note, onConfirmDelete }) {
             aria-label="Edit title"
           />
         )}
-        <div className="note-actions">
-          <button className="icon-btn" title={note.pinned ? "Unpin" : "Pin"} onClick={() => togglePin(note.id)}>
+        <div className="note-actions" role="toolbar" aria-label="Note actions">
+          <button
+            className="icon-btn"
+            title={note.pinned ? "Unpin" : "Pin"}
+            aria-label={note.pinned ? "Unpin note" : "Pin note"}
+            onClick={() => togglePin(note.id)}
+          >
             {note.pinned ? "📌" : "📍"}
           </button>
           {!note.archived ? (
-            <button className="icon-btn" title="Archive" onClick={() => archiveNote(note.id)}>
+            <button
+              className="icon-btn"
+              title="Archive"
+              aria-label="Archive note"
+              onClick={() => archiveNote(note.id)}
+            >
               🗄️
             </button>
           ) : (
-            <button className="icon-btn" title="Restore" onClick={() => restoreNote(note.id)}>
+            <button
+              className="icon-btn"
+              title="Restore"
+              aria-label="Restore note"
+              onClick={() => restoreNote(note.id)}
+            >
               ♻️
             </button>
           )}
           {!isEditing ? (
-            <button className="icon-btn" title="Edit" onClick={() => setIsEditing(true)}>
+            <button className="icon-btn" title="Edit" aria-label="Edit note" onClick={() => setIsEditing(true)}>
               ✏️
             </button>
           ) : (
             <>
-              <button className="icon-btn" title="Save" onClick={handleSave}>
+              <button className="icon-btn" title="Save" aria-label="Save changes" onClick={handleSave}>
                 💾
               </button>
-              <button className="icon-btn" title="Cancel" onClick={handleCancel}>
+              <button className="icon-btn" title="Cancel" aria-label="Cancel editing" onClick={handleCancel}>
                 ✖️
               </button>
             </>

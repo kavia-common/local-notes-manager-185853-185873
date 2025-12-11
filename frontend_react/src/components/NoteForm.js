@@ -37,8 +37,10 @@ export default function NoteForm({ initialValues, onSubmitSuccess }) {
   const isDisabled = title.trim().length === 0 && content.trim().length === 0;
 
   return (
-    <form className="note-form container" onSubmit={handleSubmit}>
+    <form className="note-form container" onSubmit={handleSubmit} aria-label="Create a new note">
+      <label className="sr-only" htmlFor="note-title">Note title</label>
       <input
+        id="note-title"
         ref={titleRef}
         className="input input-title"
         placeholder="Note title..."
@@ -46,7 +48,9 @@ export default function NoteForm({ initialValues, onSubmitSuccess }) {
         onChange={(e) => setTitle(e.target.value)}
         aria-label="Note title"
       />
+      <label className="sr-only" htmlFor="note-content">Note content</label>
       <textarea
+        id="note-content"
         className="textarea"
         placeholder="Write your note..."
         value={content}
@@ -54,7 +58,9 @@ export default function NoteForm({ initialValues, onSubmitSuccess }) {
         rows={4}
         aria-label="Note content"
       />
+      <label className="sr-only" htmlFor="note-tags">Note tags</label>
       <input
+        id="note-tags"
         className="input"
         placeholder="Tags (comma separated)"
         value={tags}
@@ -62,7 +68,7 @@ export default function NoteForm({ initialValues, onSubmitSuccess }) {
         aria-label="Note tags"
       />
       <div className="form-actions">
-        <button type="submit" className="btn btn-primary" disabled={isDisabled}>
+        <button type="submit" className="btn btn-primary" disabled={isDisabled} aria-disabled={isDisabled}>
           Add note
         </button>
       </div>

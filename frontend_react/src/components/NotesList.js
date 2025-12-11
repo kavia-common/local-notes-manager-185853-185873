@@ -75,9 +75,15 @@ export default function NotesList({ onConfirmDelete }) {
   }
 
   return (
-    <div className="notes-grid container">
+    <div
+      className="notes-grid container"
+      role="list"
+      aria-label="Notes list"
+    >
       {filtered.map((note) => (
-        <NoteCard key={note.id} note={note} onConfirmDelete={onConfirmDelete} />
+        <div key={note.id} role="listitem">
+          <NoteCard note={note} onConfirmDelete={onConfirmDelete} />
+        </div>
       ))}
     </div>
   );

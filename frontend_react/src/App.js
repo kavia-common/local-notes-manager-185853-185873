@@ -111,9 +111,9 @@ function App() {
   return (
     <SettingsProvider initialState={data.settings || initialSettingsState}>
       <NotesProvider initialState={{ notes: data.notes || [] }}>
-        <div className="app-root">
+        <div className="app-root" role="application">
           <Header />
-          <main>
+          <main role="main" aria-label="Notes main content">
             <NoteForm
               onSubmitSuccess={() => setToast({ message: "Note added", type: "success" })}
             />
@@ -136,6 +136,11 @@ function App() {
               setConfirm({ open: false, note: null });
             }}
           />
+
+          {/* Live region container for messages */}
+          <div className="sr-only" aria-live="polite" aria-atomic="true">
+            {toast.message}
+          </div>
 
           <Toast
             message={toast.message}

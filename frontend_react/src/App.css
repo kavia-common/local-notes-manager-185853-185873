@@ -9,7 +9,7 @@
   --surface: #ffffff;
   --text: #111827;
 
-  --ring: rgba(59, 130, 246, 0.35);
+  --ring: rgba(59, 130, 246, 0.48); /* slightly stronger for contrast */
   --border: #e5e7eb;
   --muted: #6b7280;
 
@@ -22,7 +22,7 @@
   --text: #f3f4f6;
   --border: #1f2937;
   --muted: #9ca3af;
-  --ring: rgba(6, 182, 212, 0.35);
+  --ring: rgba(6, 182, 212, 0.5);
 }
 
 /* Base layout */
@@ -36,6 +36,19 @@ body {
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
 }
 
+/* Visually hidden utility for screen-reader-only content */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
 /* Utilities */
 .container {
   max-width: 980px;
@@ -44,15 +57,16 @@ body {
 }
 
 .app-root main {
-  padding: 24px 0 48px 0;
+  padding: 16px 0 48px 0; /* slightly reduced for mobile */
 }
 
-/* Buttons */
+/* Buttons: larger touch targets and high-contrast focus */
 .btn {
   background: var(--surface);
   border: 1px solid var(--border);
   color: var(--text);
-  padding: 8px 14px;
+  padding: 10px 16px; /* increase touch target */
+  min-height: 40px;   /* touch target >= 40px */
   border-radius: 10px;
   cursor: pointer;
   box-shadow: var(--shadow);
@@ -63,11 +77,11 @@ body {
   border-color: var(--primary);
   box-shadow: 0 8px 24px rgba(59, 130, 246, 0.15);
 }
-.btn:focus {
-  outline: none;
+.btn:focus-visible {
+  outline: 2px solid transparent;
   box-shadow: 0 0 0 4px var(--ring);
 }
-.btn:disabled {
+.btn:disabled, .btn[aria-disabled="true"] {
   opacity: .6;
   cursor: not-allowed;
 }
@@ -99,13 +113,14 @@ body {
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
-  padding: 10px 12px;
+  padding: 12px 14px; /* increase padding for mobile */
+  min-height: 40px;   /* touch target */
   border-radius: 10px;
   box-shadow: var(--shadow);
   transition: border-color .2s ease, box-shadow .2s ease;
 }
-.input:focus, .select:focus, .textarea:focus {
-  outline: none;
+.input:focus-visible, .select:focus-visible, .textarea:focus-visible {
+  outline: 2px solid transparent;
   border-color: var(--primary);
   box-shadow: 0 0 0 4px var(--ring);
 }
@@ -138,13 +153,13 @@ body {
   margin-right: 8px;
 }
 
-/* Toolbar */
+/* Toolbar - mobile first single column, then grow */
 .toolbar {
   margin-top: 16px;
 }
 .toolbar-row {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr; /* single column on mobile */
   gap: 12px;
   align-items: center;
 }
@@ -157,12 +172,19 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap; /* wrap on small screens */
 }
 .checkbox {
   display: inline-flex;
   gap: 6px;
   color: var(--muted);
   font-size: 14px;
+}
+
+@media (min-width: 800px) {
+  .toolbar-row {
+    grid-template-columns: 1fr auto auto; /* expand on larger screens */
+  }
 }
 
 /* Note form */
@@ -248,11 +270,13 @@ body {
   font-size: 12px;
 }
 
-/* Icon button */
+/* Icon button - larger hit area and focus */
 .icon-btn {
   border: 1px solid var(--border);
   background: var(--surface);
-  padding: 6px 8px;
+  padding: 8px 10px; /* larger */
+  min-height: 36px;
+  min-width: 36px;
   border-radius: 8px;
   cursor: pointer;
   transition: transform .08s ease, box-shadow .2s ease, border-color .2s ease;
@@ -261,6 +285,10 @@ body {
   transform: translateY(-1px);
   border-color: var(--primary);
   box-shadow: 0 8px 24px rgba(59, 130, 246, 0.15);
+}
+.icon-btn:focus-visible {
+  outline: 2px solid transparent;
+  box-shadow: 0 0 0 4px var(--ring);
 }
 .icon-btn.danger:hover {
   border-color: var(--error);

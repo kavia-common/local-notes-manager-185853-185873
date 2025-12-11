@@ -18,10 +18,21 @@ export default function Toast({ message, type = "info", onClose, duration = 2500
 
   if (!message) return null;
 
+  // Use assertive for errors to announce immediately, polite otherwise
+  const ariaLive = type === "error" ? "assertive" : "polite";
+  const role = type === "error" ? "alert" : "status";
+
   return (
-    <div className={`toast toast-${type}`} role="status" aria-live="polite">
+    <div className={`toast toast-${type}`} role={role} aria-live={ariaLive} aria-atomic="true">
       <span>{message}</span>
-      <button className="icon-btn" onClick={onClose} aria-label="Close">✖️</button>
+      <button
+        className="icon-btn"
+        onClick={onClose}
+        aria-label="Close notification"
+        title="Close notification"
+      >
+        ✖️
+      </button>
     </div>
   );
 }

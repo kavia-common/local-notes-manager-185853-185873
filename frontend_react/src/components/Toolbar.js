@@ -44,9 +44,9 @@ export default function Toolbar() {
   };
 
   return (
-    <div className="toolbar container">
+    <div className="toolbar container" role="region" aria-label="Search and filters">
       <div className="toolbar-row">
-        <div className="search-group">
+        <div className="search-group" role="group" aria-label="Search">
           <input
             type="text"
             className="input"
@@ -66,7 +66,8 @@ export default function Toolbar() {
           </button>
         </div>
 
-        <div className="filters-group">
+        <fieldset className="filters-group" role="group" aria-label="Filter options">
+          <legend className="sr-only">Filters</legend>
           <label className="checkbox">
             <input
               type="checkbox"
@@ -77,6 +78,8 @@ export default function Toolbar() {
                 // Immediately reflect change in settings
                 setFilters({ query, pinnedOnly: next, archived });
               }}
+              aria-checked={pinnedOnly}
+              aria-label="Show only pinned notes"
             />
             <span>Pinned</span>
           </label>
@@ -90,13 +93,16 @@ export default function Toolbar() {
                 // Immediately reflect change in settings
                 setFilters({ query, pinnedOnly, archived: next });
               }}
+              aria-checked={archived}
+              aria-label="Show archived notes"
             />
             <span>Archived</span>
           </label>
-        </div>
+        </fieldset>
 
-        <div className="sort-group">
-          <select className="select" value={sortBy} onChange={handleSortBy} aria-label="Sort by">
+        <div className="sort-group" role="group" aria-label="Sort options">
+          <label className="sr-only" htmlFor="sort-by">Sort by</label>
+          <select id="sort-by" className="select" value={sortBy} onChange={handleSortBy} aria-label="Sort by">
             <option value="updatedAt">Updated</option>
             <option value="createdAt">Created</option>
             <option value="title">Title</option>

@@ -15,10 +15,10 @@ export default function Header() {
   const handleToggle = () => setTheme(nextTheme);
 
   return (
-    <header className="app-header">
+    <header className="app-header" role="banner">
       <div className="container header-inner">
-        <h1 className="brand">
-          <span className="brand-accent">✦</span> Local Notes
+        <h1 className="brand" aria-label="Local Notes application">
+          <span className="brand-accent" aria-hidden="true">✦</span> Local Notes
         </h1>
         <div className="header-actions">
           <button
