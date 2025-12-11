@@ -5,6 +5,7 @@ import { useSettings } from "../hooks/useSettings";
  * PUBLIC_INTERFACE
  * Header component displaying app title and theme toggle.
  * Uses settings context to get and set the theme.
+ * This updates SettingsProvider state which App observes to sync theme to <html data-theme>.
  */
 export default function Header() {
   const { state, setTheme } = useSettings();

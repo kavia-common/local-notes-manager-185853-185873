@@ -4,10 +4,13 @@ import { useSettings } from "../hooks/useSettings";
 /**
  * PUBLIC_INTERFACE
  * Toolbar component provides search, filter toggles, and sorting controls.
+ * Reads from settings context and updates it to drive selectors in NotesList.
  */
 export default function Toolbar() {
   const { state, setSort, setFilters, resetFilters } = useSettings();
-  const { sortBy, sortDir, filter } = state;
+  const sortBy = state?.sortBy || "updatedAt";
+  const sortDir = state?.sortDir === "asc" ? "asc" : "desc";
+  const filter = state?.filter || { query: "", pinnedOnly: false, archived: false };
 
   const [query, setQuery] = useState(filter.query || "");
   const [pinnedOnly, setPinnedOnly] = useState(!!filter.pinnedOnly);
@@ -64,7 +67,12 @@ export default function Toolbar() {
             <input
               type="checkbox"
               checked={pinnedOnly}
-              onChange={(e) => setPinnedOnly(e.target.checked)}
+              onChange={(e) => {
+                const next = e.target.checked;
+                setPinnedOnly(next);
+                // Immediately reflect change in settings
+                setFilters({ query, pinnedOnly: next, archived });
+              }}
             />
             <span>Pinned</span>
           </label>
@@ -72,7 +80,12 @@ export default function Toolbar() {
             <input
               type="checkbox"
               checked={archived}
-              onChange={(e) => setArchived(e.target.checked)}
+              onChange={(e) => {
+                const next = e.target.checked;
+                setArchived(next);
+                // Immediately reflect change in settings
+                setFilters({ query, pinnedOnly, archived: next });
+              }}
             />
             <span>Archived</span>
           </label>
