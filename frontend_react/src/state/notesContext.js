@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer } from "react";
+import React, { createContext, useContext, useEffect, useReducer } from "react";
 import { notesReducer, initialNotesState } from "./notesReducer";
 
 // PUBLIC_INTERFACE
@@ -11,11 +11,23 @@ export const NotesContext = createContext({
 /**
  * PUBLIC_INTERFACE
  * NotesProvider wraps children with notes state via useReducer.
+ * Also emits a custom event with the latest state for persistence.
  * @param {{children: React.ReactNode, initialState?: any}} props
  * @returns {JSX.Element}
  */
 export function NotesProvider({ children, initialState = initialNotesState }) {
   const [state, dispatch] = useReducer(notesReducer, initialState);
+
+  useEffect(() => {
+    // Notify app about state updates for persistence
+    if (typeof window.__persistNotesState === "function") {
+      window.__persistNotesState(state);
+    } else {
+      const ev = new CustomEvent("notes:state", { detail: state });
+      window.dispatchEvent(ev);
+    }
+  }, [state]);
+
   return <NotesContext.Provider value={{ state, dispatch }}>{children}</NotesContext.Provider>;
 }
 
